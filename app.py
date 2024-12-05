@@ -4,7 +4,10 @@ from google.oauth2.service_account import Credentials
 import gspread
 import json
 import os
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 # Import components (ensure these exist in your project)
 from components.Carros import carros
 from components.yamaha import concorr
@@ -51,29 +54,19 @@ def custom_sidebar_style():
     )
 
 def connect_to_gsheet(sheet_name):
-    """
-    Connects to Google Sheets using service account credentials.
-    """
-    try:
-        credentials_path = 'credenciais.json'
-        if not os.path.exists(credentials_path):
-            st.error(f"Credentials file not found at {credentials_path}")
-            return None
-
-        with open(credentials_path, 'r') as arquivo:
-            credenciais = json.load(arquivo)
+        private_key = os.getenv("PRIVATE_KEY").replace('-----BEGIN PRIVATE KEY-----', '').replace('-----END PRIVATE KEY-----', '').replace('\n', '')
 
         credentials_info = {
             "type": "service_account",
-            "project_id": credenciais['project_id'],
-            "private_key_id": credenciais['private_key_id'],
-            "private_key": credenciais['private_key'].replace('\\n', '\n'),
-            "client_email": credenciais['client_email'],
-            "client_id": credenciais['client_id'],
+            "project_id": os.getenv('PROJECT_ID'),
+            "private_key_id": os.getenv('PRIVATE_KEY_ID').replace('\\n', '\n'),
+            'private_key': os.getenv("PRIVATE_KEY").replace('\\n', '\n'),
+            "client_email": os.getenv('CLIENT_EMAIL'),
+            "client_id": os.getenv('CLIENT_ID'),  # Corrigido para usar CLIENT_ID corretamente
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
-            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_x509_cert_url": credenciais['client_x509_cert_url'],
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",  # Corrigido para usar a URL correta
+            "client_x509_cert_url": os.getenv('CLIENT_X509_CERT_URL'),
         }
         
         credentials = Credentials.from_service_account_info(
@@ -85,10 +78,6 @@ def connect_to_gsheet(sheet_name):
         )
         client = gspread.authorize(credentials)
         return client.open(sheet_name).sheet1
-    
-    except Exception as e:
-        st.error(f"Error connecting to Google Sheets: {e}")
-        return None
 
 def carregar_usuarios(sheet):
     """
