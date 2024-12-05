@@ -57,16 +57,16 @@ def connect_to_gsheet(sheet_name):
 
         credentials_info = {
             "type": "service_account",
-            "project_id": os.getenv('PROJECT_ID'),
-            "private_key_id": os.getenv('PRIVATE_KEY_ID'),
-            'private_key': os.getenv("PRIVATE_KEY").replace('\\n', '\n'),
-            "client_email": os.getenv('CLIENT_EMAIL'),
-            "client_id": os.getenv('CLIENT_ID'),  # Corrigido para usar CLIENT_ID corretamente
+            "project_id": st.secrets["general"]["PROJECT_ID"],
+            "private_key_id": st.secrets["general"]["PRIVATE_KEY_ID"],
+            "private_key": st.secrets["general"]["PRIVATE_KEY"],
+            "client_email": st.secrets["general"]["CLIENT_EMAIL"],
+            "client_id": st.secrets["general"]["CLIENT_ID"],
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
-            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",  # Corrigido para usar a URL correta
-            "client_x509_cert_url": os.getenv('CLIENT_X509_CERT_URL'),
-        }
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_x509_cert_url": st.secrets["general"]["CLIENT_X509_CERT_URL"],
+    }
         
         credentials = Credentials.from_service_account_info(
             credentials_info,
