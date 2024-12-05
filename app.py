@@ -54,7 +54,6 @@ def custom_sidebar_style():
     )
 
 def connect_to_gsheet(sheet_name):
-        private_key = os.getenv("PRIVATE_KEY").replace('-----BEGIN PRIVATE KEY-----', '').replace('-----END PRIVATE KEY-----', '').replace('\n', '')
 
         credentials_info = {
             "type": "service_account",
