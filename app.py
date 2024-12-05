@@ -13,6 +13,7 @@ from components.Carros import carros
 from components.yamaha import concorr
 from components.gsv import gsv
 from components.adm import adm
+from components.comercial import comercial
 # Page configuration
 st.set_page_config(
     page_title="Dashboard", 
@@ -152,6 +153,8 @@ def render_sidebar():
         st.session_state['selected_page'] = "GSV"
     if st.sidebar.button("ADM"):
         st.session_state['selected_page'] = "ADM"
+    if st.sidebar.button("Comercial"):
+        st.session_state['selected_page'] = "Comercial"
     
     if st.sidebar.button("Sair"):
         st.session_state['logado'] = False
@@ -184,6 +187,8 @@ def pagina_inicial():
             gsv()
         elif page == "ADM":
             adm()
+        elif page == "Comercial":
+            comercial()
         else:
             st.title("Bem-vindo ao Dashboard")
 
