@@ -3,7 +3,7 @@ from utils.state_manager import StateManager
 from utils.templates import render_dashboard
 import streamlit as st
 
-def carros():
+def Carros():
     if StateManager.get_state('logado'):
         render_dashboard(
             title="Dashboard - Carros",
