@@ -1,11 +1,16 @@
-from config.db_config import get_database
+
 import logging
-from werkzeug.security import check_password_hash
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
+from typing import Tuple
+# Adiciona o diretório raiz ao PYTHONPATH
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config.db_config import get_database
 
 logger = logging.getLogger(__name__)
 
-def validate_user(email: str, senha: str) -> tuple[bool, str]:
+def validate_user(email: str, senha: str) -> Tuple[bool, str]:
     """
     Valida o usuário com base no email e senha fornecidos.
     Retorna uma tupla (success, message).
@@ -15,13 +20,17 @@ def validate_user(email: str, senha: str) -> tuple[bool, str]:
         if not conn:
             return False, "Erro ao conectar ao banco de dados."
         
-        with conn.cursor() as cursor:  # Usar DictCursor aqui
-            query = "SELECT email, senha FROM usuarios WHERE email = %s"
+        with conn.cursor() as cursor:
+            query = """
+                SELECT u.email, u.senha, u.nome, r.role_name 
+                FROM usuarios u
+                JOIN user_roles r ON u.role_id = r.id
+                WHERE u.email = %s
+            """
             cursor.execute(query, (email,))
             user = cursor.fetchone()
             
             if user:
-                # Verifica se a senha fornecida corresponde à senha criptografada no banco
                 if check_password_hash(user['senha'], senha):
                     return True, "Login bem-sucedido!"
                 else:
@@ -37,28 +46,93 @@ def validate_user(email: str, senha: str) -> tuple[bool, str]:
         if conn:
             conn.close()
 
-def create_user(email: str, senha: str) -> bool:
+def create_user(email: str, senha: str, nome: str, role: str) -> Tuple[bool, str]:
     """
-    Cria um novo usuário com email e senha criptografada.
-    Retorna True se o usuário foi criado com sucesso, False caso contrário.
-    """
-    conn = get_database()
-    if conn is None:
-        return False
+    Cria um novo usuário com email, senha criptografada, nome e role.
     
+    Args:
+        email (str): Email do usuário
+        senha (str): Senha do usuário (será criptografada)
+        nome (str): Nome completo do usuário
+        role (str): Papel do usuário (deve existir na tabela user_roles)
+    
+    Returns:
+        Tuple[bool, str]: (Sucesso, Mensagem)
+    """
     try:
+        conn = get_database()
+        if not conn:
+            return False, "Erro ao conectar ao banco de dados."
+        
         with conn.cursor() as cursor:
-            # Criptografa a senha antes de armazená-la no banco
+            # Verificar se o email já está em uso
+            cursor.execute("SELECT id FROM usuarios WHERE email = %s", (email,))
+            if cursor.fetchone():
+                return False, "Email já está em uso."
+            
+            # Verificar se o role existe
+            cursor.execute("SELECT id FROM user_roles WHERE role_name = %s", (role,))
+            role_data = cursor.fetchone()
+            if not role_data:
+                return False, f"Role '{role}' não encontrado no sistema."
+            
+            role_id = role_data['id']
+            
+            # Criptografar a senha
             hashed_password = generate_password_hash(senha)
-            query = "INSERT INTO usuarios (email, senha) VALUES (%s, %s)"
-            cursor.execute(query, (email, hashed_password))
+            
+            # Inserir o novo usuário
+            query = """
+                INSERT INTO usuarios (email, senha, nome, role_id) 
+                VALUES (%s, %s, %s, %s)
+            """
+            cursor.execute(query, (email, hashed_password, nome, role_id))
             conn.commit()
-            return True
+            
+            logger.info(f"Usuário criado com sucesso: {email}")
+            return True, "Usuário criado com sucesso!"
     
     except Exception as e:
         logger.error(f"Erro ao criar usuário: {str(e)}")
-        return False
+        return False, f"Erro ao criar usuário: {str(e)}"
     
     finally:
         if conn:
             conn.close()
+
+def get_user_role(email: str) -> str:
+    """
+    Obtém o papel (role) do usuário.
+    
+    Args:
+        email (str): Email do usuário
+    
+    Returns:
+        str: Nome do role ou None se não encontrado
+    """
+    try:
+        conn = get_database()
+        if not conn:
+            return None
+        
+        with conn.cursor() as cursor:
+            query = """
+                SELECT r.role_name 
+                FROM usuarios u
+                JOIN user_roles r ON u.role_id = r.id
+                WHERE u.email = %s
+            """
+            cursor.execute(query, (email,))
+            result = cursor.fetchone()
+            return result['role_name'] if result else None
+    
+    except Exception as e:
+        logger.error(f"Erro ao obter role do usuário: {str(e)}")
+        return None
+    
+    finally:
+        if conn:
+            conn.close()
+
+
+create_user('vinicius', 'bem10048', 'vinicius','diretor')

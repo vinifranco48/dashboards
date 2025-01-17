@@ -1,48 +1,99 @@
-import pymysql
+from enum import Enum
+from typing import Dict, List, Any
+import streamlit as st
 import logging
 
-# Configuração do logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('database_connection.log'),
-        logging.StreamHandler()
+
+logger = logging.getLogger(__name__)
+
+class UserRole(Enum):
+    DIRETOR = "diretor"
+    GESTOR_COMERCIAL = "gestor_comercial"
+    GESTOR_POSVENDA = "gestor_posvenda"
+    VENDEDOR = "vendedor"
+    ADM_CNHC = "adm_cnhc"
+
+# Definição de acesso aos dashboards por perfil
+ROLE_ACCESS = {
+    UserRole.DIRETOR.value: [
+        "Dashboard",
+        "Comercial",
+        "Carros",
+        "Yamaha",
+        "Gsv",
+        "Adm"
+    ],
+    UserRole.GESTOR_COMERCIAL.value: [
+        "Dashboard",
+        "Comercial",
+        "Carros",
+        "Yamaha"
+    ],
+    UserRole.GESTOR_POSVENDA.value: [
+        "Dashboard",
+        "Gsv",
+        "Yamaha"
+    ],
+    UserRole.VENDEDOR.value: [
+        "Dashboard",
+        "Carros",
+        "Yamaha"
+    ],
+    UserRole.ADM_CNHC.value: [
+        "Dashboard",
+        "Adm"
     ]
-)
+}
 
-def test_connection():
+def get_user_role(email: str) -> str:
+    """
+    Obtém o papel do usuário do banco de dados.
+    """
     try:
-        config = {
-            "host": "cpanel.graunahonda.com.br",  # ou o IP do seu servidor
-            "user": "grauna",
-            "password": "1018337#gm",
-            "database": "grauna_bi",
-            "port": 3306,
-            "connect_timeout": 30  # Aumente o timeout
-        }
-        
-        logging.info("Tentando conectar ao banco de dados...")
-        
-        # Conecta ao banco de dados usando pymysql
-        conn = pymysql.connect(**config)
-        
-        # Verifica se a conexão foi bem sucedida
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT VERSION()")
-            version = cursor.fetchone()
-            logging.info(f"Conexão bem sucedida! Versão do servidor: {version[0]}")
-        
-        # Fecha a conexão
-        conn.close()
-        logging.info("Conexão fechada.")
-        
-    except pymysql.MySQLError as err:
-        logging.error(f"Erro ao conectar ao banco de dados: {err}")
-        logging.error(f"Código do erro: {err.args[0]}")
-        logging.error(f"Mensagem do erro: {err.args[1]}")
+        conn = get_database()
+        if conn:
+            with conn.cursor() as cursor:
+                query = """
+                    SELECT r.role_name 
+                    FROM usuarios u
+                    JOIN user_roles r ON u.role_id = r.id
+                    WHERE u.email = %s
+                """
+                cursor.execute(query, (email,))
+                result = cursor.fetchone()
+                return result['role_name'] if result else None
     except Exception as e:
-        logging.error(f"Erro inesperado: {e}", exc_info=True)  # Adiciona traceback completo
+        logger.error(f"Erro ao obter papel do usuário: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
 
-if __name__ == "__main__":
-    test_connection()
+def filter_accessible_components(components: Dict[str, Any], user_email: str) -> Dict[str, Any]:
+    """
+    Filtra os componentes baseado no papel do usuário.
+    """
+    try:
+        role = get_user_role(user_email)
+        if not role:
+            logger.error(f"Papel não encontrado para usuário: {user_email}")
+            return {}
+
+        allowed_components = ROLE_ACCESS.get(role, [])
+        return {name: comp for name, comp in components.items() if name in allowed_components}
+    except Exception as e:
+        logger.error(f"Erro ao filtrar componentes: {e}")
+        return {}
+
+def check_component_access(component_name: str, user_email: str) -> bool:
+    """
+    Verifica se o usuário tem acesso a um componente específico.
+    """
+    try:
+        role = get_user_role(user_email)
+        if not role:
+            return False
+        return component_name in ROLE_ACCESS.get(role, [])
+    except Exception as e:
+        logger.error(f"Erro ao verificar acesso ao componente: {e}")
+        return False
