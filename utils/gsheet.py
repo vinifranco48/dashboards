@@ -18,7 +18,7 @@ def connect_to_gsheet(sheet_name:str, credentials:dict):
         raise RuntimeError('Erro de conecção')
     
 def load_sheet_data(sheet):
-    try:
+    try:                                                                                                                                                                                                                                                                                        
         data= sheet.get_all_records()
         return pd.DataFrame(data)
     except Exception as e:
