@@ -135,4 +135,3 @@ def get_user_role(email: str) -> str:
             conn.close()
 
 
-create_user('vinicius', 'bem10048', 'vinicius','diretor')
